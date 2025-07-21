@@ -64,8 +64,8 @@
                         <span>Moves: <strong id="finalMoves">0</strong></span>
                     </div>
                     <div class="win-actions">
-                        <button id="retryBtn" class="btn btn-primary">🔄 Retry Puzzle</button>
-                        <button id="newPuzzleBtn" class="btn btn-secondary">📁 New Image</button>
+                        <button id="retryBtn" class="btn btn-primary" onclick="window.puzzleGame && window.puzzleGame.retryPuzzle()">🔄 Retry Puzzle</button>
+                        <button id="newPuzzleBtn" class="btn btn-secondary" onclick="window.puzzleGame && window.puzzleGame.loadNewImage()">📁 New Image</button>
                     </div>
                 </div>
             </div>
@@ -200,6 +200,6 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script type="module" src="src/main.js"></script>
 </body>
 </html>

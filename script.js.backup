@@ -1,5 +1,8 @@
+console.log('Script loaded successfully');
+
 class SlidePuzzle {
     constructor() {
+        console.log('SlidePuzzle constructor called');
         this.canvas = document.getElementById('puzzleCanvas');
         this.ctx = this.canvas.getContext('2d');
         this.previewCanvas = document.getElementById('previewCanvas');
@@ -42,6 +45,10 @@ class SlidePuzzle {
         this.finalTimeEl = document.getElementById('finalTime');
         this.finalMovesEl = document.getElementById('finalMoves');
         
+        // Direct references to the buttons
+        this.retryBtn = document.getElementById('retryBtn');
+        this.newPuzzleBtn = document.getElementById('newPuzzleBtn');
+        
         // Crop elements
         this.cropModal = document.getElementById('cropModal');
         this.cropCanvas = document.getElementById('cropCanvas');
@@ -75,6 +82,9 @@ class SlidePuzzle {
         this.lastTime = 0;
         this.shuffleModalTimer = null;
         
+        // File selection state
+        this.isSelectingFile = false;
+        
         // Crop state
         this.cropState = {
             isDragging: false,
@@ -105,6 +115,18 @@ class SlidePuzzle {
     
     setupEventListeners() {
         this.imageInput.addEventListener('change', (e) => this.handleImageUpload(e));
+        
+        // Handle file dialog cancellation
+        this.imageInput.addEventListener('cancel', () => {
+            this.isSelectingFile = false;
+        });
+        
+        // Additional safety net - reset flag after a delay when file input loses focus
+        this.imageInput.addEventListener('blur', () => {
+            setTimeout(() => {
+                this.isSelectingFile = false;
+            }, 100);
+        });
         this.shuffleBtn.addEventListener('click', () => this.startNewGame());
         this.hintBtn.addEventListener('click', () => this.showHint());
         this.autoSolveBtn.addEventListener('click', () => this.autoSolve());
@@ -140,10 +162,55 @@ class SlidePuzzle {
         // Crop event listeners
         this.cropConfirm.addEventListener('click', () => this.confirmCrop());
         this.cropCancel.addEventListener('click', () => this.cancelCrop());
+        // Mouse events for crop
         this.cropOverlay.addEventListener('mousedown', (e) => this.onCropMouseDown(e));
         this.cropOverlay.addEventListener('mousemove', (e) => this.onCropMouseMove(e));
         this.cropOverlay.addEventListener('mouseup', () => this.onCropMouseUp());
         this.cropOverlay.addEventListener('mouseleave', () => this.onCropMouseUp());
+        
+        // Touch events for mobile crop
+        this.cropOverlay.addEventListener('touchstart', (e) => this.onCropTouchStart(e));
+        this.cropOverlay.addEventListener('touchmove', (e) => this.onCropTouchMove(e));
+        this.cropOverlay.addEventListener('touchend', () => this.onCropTouchEnd());
+        this.cropOverlay.addEventListener('touchcancel', () => this.onCropTouchEnd());
+        
+        // Win message button event listeners
+        console.log('Setting up button listeners...');
+        console.log('retryBtn found:', !!this.retryBtn);
+        console.log('newPuzzleBtn found:', !!this.newPuzzleBtn);
+        
+        if (this.retryBtn) {
+            this.retryBtn.addEventListener('click', (e) => {
+                console.log('Retry button clicked directly');
+                e.preventDefault();
+                e.stopPropagation();
+                this.retryPuzzle();
+            });
+        }
+        
+        if (this.newPuzzleBtn) {
+            this.newPuzzleBtn.addEventListener('click', (e) => {
+                console.log('New puzzle button clicked directly');
+                e.preventDefault();
+                e.stopPropagation();
+                this.loadNewImage();
+            });
+        }
+        
+        // Also add event delegation as backup
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'retryBtn') {
+                console.log('Retry button clicked via delegation');
+                e.preventDefault();
+                e.stopPropagation();
+                this.retryPuzzle();
+            } else if (e.target.id === 'newPuzzleBtn') {
+                console.log('New image button clicked via delegation');
+                e.preventDefault();
+                e.stopPropagation();
+                this.loadNewImage();
+            }
+        });
     }
     
     drawInitialCanvas() {
@@ -176,12 +243,19 @@ class SlidePuzzle {
     
     handleImageUpload(event) {
         const file = event.target.files[0];
-        if (!file) return;
+        if (!file) {
+            this.isSelectingFile = false;
+            return;
+        }
+        
+        // Hide win message only when a file is actually selected
+        this.winMessage.classList.add('hidden');
         
         const reader = new FileReader();
         reader.onload = (e) => {
             this.originalImage = new Image();
             this.originalImage.onload = () => {
+                this.isSelectingFile = false;
                 this.showCropModal();
             };
             this.originalImage.src = e.target.result;
@@ -278,6 +352,11 @@ class SlidePuzzle {
         // Start timer
         this.startTime = Date.now();
         this.isGameActive = true;
+        
+        // Disable difficulty changes during gameplay
+        this.difficultySelect.disabled = true;
+        this.difficultySelect.classList.add('disabled-during-game');
+        
         this.clearShuffleTimer(); // Clear any pending shuffle modal
         if (this.timer) clearInterval(this.timer);
         this.timer = setInterval(() => this.updateTimer(), 1000);
@@ -483,6 +562,10 @@ class SlidePuzzle {
             this.timer = null;
         }
         
+        // Re-enable difficulty changes when game ends
+        this.difficultySelect.disabled = false;
+        this.difficultySelect.classList.remove('disabled-during-game');
+        
         const endTime = Date.now();
         const totalTime = Math.floor((endTime - this.startTime) / 1000);
         
@@ -556,6 +639,13 @@ class SlidePuzzle {
     }
     
     onDifficultyChange() {
+        // The difficulty select is disabled during gameplay, so this shouldn't trigger
+        // But we'll keep this check as a safety measure
+        if (this.isGameActive) {
+            this.difficultySelect.value = this.gridSize.toString();
+            return;
+        }
+        
         this.gridSize = parseInt(this.difficultySelect.value);
         this.updateBestTimeDisplay();
         this.clearShuffleTimer(); // Clear any pending modal
@@ -605,12 +695,23 @@ class SlidePuzzle {
         const canvasWidth = this.cropCanvas.width;
         const canvasHeight = this.cropCanvas.height;
         
-        // Start with a centered square selection
-        const size = Math.min(canvasWidth, canvasHeight) * 0.6;
+        // Start with a centered square selection, smaller on mobile
+        const isMobile = window.innerWidth <= 768;
+        const sizeRatio = isMobile ? 0.7 : 0.6;
+        const size = Math.min(canvasWidth, canvasHeight) * sizeRatio;
+        
         this.cropState.cropWidth = size;
         this.cropState.cropHeight = size;
-        this.cropState.cropX = (canvasWidth - size) / 2;
-        this.cropState.cropY = (canvasHeight - size) / 2;
+        this.cropState.cropX = Math.max(0, (canvasWidth - size) / 2);
+        this.cropState.cropY = Math.max(0, (canvasHeight - size) / 2);
+        
+        // Ensure selection stays within bounds
+        if (this.cropState.cropX + this.cropState.cropWidth > canvasWidth) {
+            this.cropState.cropX = canvasWidth - this.cropState.cropWidth;
+        }
+        if (this.cropState.cropY + this.cropState.cropHeight > canvasHeight) {
+            this.cropState.cropY = canvasHeight - this.cropState.cropHeight;
+        }
         
         this.updateCropSelection();
     }
@@ -689,9 +790,9 @@ class SlidePuzzle {
         this.cropState.dragHandle = null;
     }
     
-    getHandleAtPosition(x, y) {
+    getHandleAtPosition(x, y, customTolerance = null) {
         const { cropX, cropY, cropWidth, cropHeight } = this.cropState;
-        const tolerance = 15;
+        const tolerance = customTolerance || 15;
         
         const handles = {
             'nw': { x: cropX, y: cropY },
@@ -926,6 +1027,11 @@ class SlidePuzzle {
         if (this.currentSolveStep >= this.solveMoves.length) {
             this.isSolving = false;
             this.autoSolveBtn.textContent = '✅ Solved!';
+            
+            // Re-enable difficulty changes when auto-solve completes
+            this.difficultySelect.disabled = false;
+            this.difficultySelect.classList.remove('disabled-during-game');
+            
             setTimeout(() => {
                 this.autoSolveBtn.textContent = '🤖 Auto-Solve';
                 this.enableGameButtons();
@@ -1537,9 +1643,96 @@ class SlidePuzzle {
             this.shuffleModalTimer = null;
         }
     }
+    
+    retryPuzzle() {
+        console.log('retryPuzzle called');
+        this.winMessage.classList.add('hidden');
+        this.startNewGame();
+    }
+    
+    loadNewImage() {
+        console.log('loadNewImage called');
+        if (this.isSelectingFile) {
+            console.log('Already selecting file, ignoring');
+            return;
+        }
+        this.isSelectingFile = true;
+        this.imageInput.click();
+    }
+    
+    // Touch event handlers for mobile crop functionality
+    onCropTouchStart(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const rect = this.cropOverlay.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        
+        // Use the same logic as mouse down
+        this.cropState.startX = x;
+        this.cropState.startY = y;
+        this.cropState.startCropX = this.cropState.cropX;
+        this.cropState.startCropY = this.cropState.cropY;
+        this.cropState.startCropWidth = this.cropState.cropWidth;
+        this.cropState.startCropHeight = this.cropState.cropHeight;
+        
+        // Check if touching a handle (with larger tolerance for touch)
+        const handle = this.getHandleAtPosition(x, y, 25);
+        if (handle) {
+            this.cropState.isResizing = true;
+            this.cropState.dragHandle = handle;
+        } else if (this.isInsideCropArea(x, y)) {
+            this.cropState.isDragging = true;
+        } else {
+            // Start new selection
+            this.cropState.cropX = x;
+            this.cropState.cropY = y;
+            this.cropState.cropWidth = 0;
+            this.cropState.cropHeight = 0;
+            this.cropState.isDragging = true;
+            this.updateCropSelection();
+        }
+    }
+    
+    onCropTouchMove(e) {
+        e.preventDefault();
+        if (!this.cropState.isDragging && !this.cropState.isResizing) return;
+        
+        const touch = e.touches[0];
+        const rect = this.cropOverlay.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        
+        const deltaX = x - this.cropState.startX;
+        const deltaY = y - this.cropState.startY;
+        
+        if (this.cropState.isDragging && !this.cropState.isResizing) {
+            // Move the selection
+            this.cropState.cropX = Math.max(0, Math.min(
+                this.cropCanvas.width - this.cropState.cropWidth,
+                this.cropState.startCropX + deltaX
+            ));
+            this.cropState.cropY = Math.max(0, Math.min(
+                this.cropCanvas.height - this.cropState.cropHeight,
+                this.cropState.startCropY + deltaY
+            ));
+        } else if (this.cropState.isResizing) {
+            // Resize the selection
+            this.resizeCropSelection(deltaX, deltaY);
+        }
+        
+        this.updateCropSelection();
+    }
+    
+    onCropTouchEnd() {
+        this.cropState.isDragging = false;
+        this.cropState.isResizing = false;
+        this.cropState.dragHandle = null;
+    }
 }
 
 // Initialize the game when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    new SlidePuzzle();
+    console.log('DOM loaded, creating SlidePuzzle instance');
+    window.puzzleGame = new SlidePuzzle();
 });

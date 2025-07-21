@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(pkill:*)",
+      "Bash(node:*)",
+      "Bash(mkdir:*)",
+      "Bash(node:*)",
+      "Bash(mv:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }

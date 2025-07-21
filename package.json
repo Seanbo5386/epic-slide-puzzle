@@ -1,0 +1,15 @@
+{
+  "name": "epic-slide-puzzle",
+  "version": "1.0.0",
+  "description": "A modular slide puzzle game with image upload and animations",
+  "main": "src/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "dev-win": "python -m http.server 8000",
+    "start": "python3 -m http.server 8000"
+  },
+  "keywords": ["puzzle", "game", "javascript", "canvas"],
+  "author": "",
+  "license": "MIT"
+}
