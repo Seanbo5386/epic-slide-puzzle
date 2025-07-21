@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Epic Slide Puzzle</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="title">🧩 Epic Slide Puzzle</h1>
+            <p class="subtitle">Upload an image and create your own sliding puzzle!</p>
+        </header>
+
+        <div class="controls">
+            <div class="file-input-wrapper">
+                <input type="file" id="imageInput" accept="image/*" class="file-input">
+                <label for="imageInput" class="file-label">
+                    📁 Choose Image
+                </label>
+            </div>
+            
+            <select id="difficulty" class="difficulty-select">
+                <option value="2">Super Easy (2×2)</option>
+                <option value="3">Easy (3×3)</option>
+                <option value="4">Medium (4×4)</option>
+                <option value="5">Hard (5×5)</option>
+                <option value="6">Expert (6×6)</option>
+            </select>
+            
+            <button id="shuffleBtn" class="btn btn-primary" disabled style="display: none;">
+                🎲 Start Game
+            </button>
+            
+            <button id="hintBtn" class="btn btn-secondary" disabled>
+                💡 Hint
+            </button>
+            
+            <button id="autoSolveBtn" class="btn btn-success" disabled>
+                🤖 Auto-Solve
+            </button>
+            
+            <button id="nextMoveBtn" class="btn btn-info" disabled>
+                ➡️ Next Move
+            </button>
+            
+            <button id="leaderboardBtn" class="btn btn-warning">
+                🏆 Leaderboard
+            </button>
+        </div>
+
+        <div class="game-area">
+            <canvas id="puzzleCanvas" width="400" height="400"></canvas>
+            <div id="winMessage" class="win-message hidden">
+                <div class="win-content">
+                    <h2>🎉 Congratulations! 🎉</h2>
+                    <p>You solved the puzzle!</p>
+                    <div class="win-stats">
+                        <span>Time: <strong id="finalTime">--:--</strong></span>
+                        <span>Moves: <strong id="finalMoves">0</strong></span>
+                    </div>
+                    <div class="win-actions">
+                        <button id="retryBtn" class="btn btn-primary">🔄 Retry Puzzle</button>
+                        <button id="newPuzzleBtn" class="btn btn-secondary">📁 New Image</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <label>Moves</label>
+                <span id="moveCount">0</span>
+            </div>
+            <div class="stat">
+                <label>Time</label>
+                <span id="timeDisplay">00:00</span>
+            </div>
+            <div class="stat">
+                <label>Best Time</label>
+                <span id="bestTime">--:--</span>
+            </div>
+            <div class="stat">
+                <label>Your Rank</label>
+                <span id="userRank">#--</span>
+            </div>
+        </div>
+
+        <div class="image-preview-area">
+            <canvas id="previewCanvas" width="200" height="200"></canvas>
+            <p class="preview-text">Original Image</p>
+        </div>
+    </div>
+
+    <!-- Crop Modal -->
+    <div id="cropModal" class="crop-modal hidden">
+        <div class="crop-modal-content">
+            <div class="crop-header">
+                <h2>✂️ Crop Your Image</h2>
+                <p>Drag to select the perfect area for your puzzle</p>
+            </div>
+            
+            <div class="crop-container">
+                <canvas id="cropCanvas" class="crop-canvas"></canvas>
+                <div id="cropOverlay" class="crop-overlay">
+                    <div id="cropSelection" class="crop-selection">
+                        <div class="crop-handle crop-handle-nw"></div>
+                        <div class="crop-handle crop-handle-ne"></div>
+                        <div class="crop-handle crop-handle-sw"></div>
+                        <div class="crop-handle crop-handle-se"></div>
+                        <div class="crop-handle crop-handle-n"></div>
+                        <div class="crop-handle crop-handle-s"></div>
+                        <div class="crop-handle crop-handle-w"></div>
+                        <div class="crop-handle crop-handle-e"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="crop-actions">
+                <button id="cropConfirm" class="btn btn-primary">✅ Create Puzzle</button>
+                <button id="cropCancel" class="btn btn-secondary">❌ Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shuffle Modal -->
+    <div id="shuffleModal" class="crop-modal hidden">
+        <div class="crop-modal-content">
+            <div class="crop-header">
+                <h2>🎲 Ready to Play?</h2>
+                <p>Your puzzle is ready! Click shuffle to scramble the pieces and start the game.</p>
+            </div>
+            
+            <div class="shuffle-preview">
+                <canvas id="shufflePreviewCanvas" width="200" height="200"></canvas>
+            </div>
+            
+            <div class="crop-actions">
+                <button id="startShuffleBtn" class="btn btn-primary">🎲 Shuffle & Start!</button>
+                <button id="cancelShuffleBtn" class="btn btn-secondary">Not Yet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Name Modal -->
+    <div id="playerNameModal" class="crop-modal hidden">
+        <div class="crop-modal-content">
+            <div class="crop-header">
+                <h2>🎉 New Record! 🎉</h2>
+                <p>You made it to the leaderboard! Enter your name:</p>
+            </div>
+            
+            <div class="name-input-container">
+                <input type="text" id="playerNameInput" placeholder="Enter your name" maxlength="20" class="name-input">
+                <div class="record-stats">
+                    <span>Time: <strong id="recordTime">--:--</strong></span>
+                    <span>Moves: <strong id="recordMoves">0</strong></span>
+                    <span>Difficulty: <strong id="recordDifficulty">3×3</strong></span>
+                </div>
+            </div>
+            
+            <div class="crop-actions">
+                <button id="saveRecordBtn" class="btn btn-primary">💾 Save Record</button>
+                <button id="skipRecordBtn" class="btn btn-secondary">⏭️ Skip</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaderboard Modal -->
+    <div id="leaderboardModal" class="crop-modal hidden">
+        <div class="leaderboard-modal-content">
+            <div class="crop-header">
+                <h2>🏆 Hall of Fame</h2>
+                <p>Top puzzle solvers across all difficulties</p>
+            </div>
+            
+            <div class="leaderboard-filters">
+                <button class="filter-btn active" data-difficulty="all">All Levels</button>
+                <button class="filter-btn" data-difficulty="2">2×2</button>
+                <button class="filter-btn" data-difficulty="3">3×3</button>
+                <button class="filter-btn" data-difficulty="4">4×4</button>
+                <button class="filter-btn" data-difficulty="5">5×5</button>
+                <button class="filter-btn" data-difficulty="6">6×6</button>
+            </div>
+            
+            <div class="leaderboard-container">
+                <div id="leaderboardList" class="leaderboard-list">
+                    <div class="no-records">No records yet - be the first!</div>
+                </div>
+            </div>
+            
+            <div class="leaderboard-actions">
+                <button id="clearLeaderboardBtn" class="btn btn-danger">🗑️ Clear All</button>
+                <button id="closeLeaderboardBtn" class="btn btn-primary">✅ Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
