@@ -214,7 +214,11 @@ export class UIManager {
             this.newPuzzleBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                this.loadNewImage();
+                if (this.onNewImage) {
+                    this.onNewImage();
+                } else {
+                    this.loadNewImage();
+                }
             });
         }
         
@@ -227,7 +231,11 @@ export class UIManager {
             } else if (e.target.id === 'newPuzzleBtn') {
                 e.preventDefault();
                 e.stopPropagation();
-                this.loadNewImage();
+                if (this.onNewImage) {
+                    this.onNewImage();
+                } else {
+                    this.loadNewImage();
+                }
             }
         });
     }
