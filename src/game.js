@@ -259,7 +259,7 @@ export class GameState {
         
         // Find the move that puts a tile closer to its correct position
         let bestMove = -1;
-        let bestScore = -1;
+        let bestScore = Infinity;
         
         for (const move of validMoves) {
             const tileNum = this.tiles[move];
@@ -267,12 +267,12 @@ export class GameState {
             const distance = this.getManhattanDistance(move, correctPos);
             const newDistance = this.getManhattanDistance(emptyPos, correctPos);
             
-            if (newDistance < distance && newDistance < bestScore || bestScore === -1) {
+            if (bestScore === -1 || (newDistance < distance && newDistance < bestScore)) {
                 bestScore = newDistance;
                 bestMove = move;
             }
         }
-        
+
         return bestMove !== -1 ? bestMove : (validMoves.length > 0 ? validMoves[0] : -1);
     }
 
