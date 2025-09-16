@@ -1,7 +1,7 @@
 import { GameState } from './game.js';
 import { UIManager } from './ui.js';
 
-class SlidePuzzle {
+export class SlidePuzzle {
     constructor() {
         this.game = new GameState();
         this.ui = new UIManager();
@@ -214,50 +214,85 @@ class SlidePuzzle {
         try {
             // Store original state to restore if needed
             this.originalGameState = [...this.game.tiles];
-            
+            this.originalMoveCount = this.game.moveCount;
+
             // Find solution path
             this.game.solveMoves = this.game.findSolution();
             this.game.currentSolveStep = 0;
-            
+
             // Restore original state for execution
             this.game.tiles = [...this.originalGameState];
-            
+
             if (this.game.solveMoves.length === 0) {
-                this.ui.autoSolveBtn.textContent = '❌ No Solution Found';
-                setTimeout(() => {
-                    this.ui.autoSolveBtn.textContent = '🤖 Auto-Solve';
-                    this.ui.autoSolveBtn.disabled = false;
-                    this.game.isSolving = false;
-                }, 2000);
+                this.handleSolveFailure('❌ No Solution Found');
                 return;
             }
-            
+
             this.executeSolveMoves();
         } catch (error) {
             console.error('Auto-solve error:', error);
-            this.game.isSolving = false;
-            this.ui.autoSolveBtn.textContent = '❌ Solve Failed';
-            this.ui.autoSolveBtn.disabled = false;
-            setTimeout(() => {
-                this.ui.autoSolveBtn.textContent = '🤖 Auto-Solve';
-            }, 2000);
+            this.handleSolveFailure('❌ Solve Failed');
         }
+    }
+
+    handleSolveFailure(message = '❌ Solve Failed') {
+        this.game.isSolving = false;
+
+        if (this.originalGameState) {
+            this.game.tiles = [...this.originalGameState];
+        }
+
+        if (this.game) {
+            this.game.currentSolveStep = 0;
+            this.game.solveMoves = [];
+        }
+
+        if (typeof this.originalMoveCount === 'number') {
+            this.game.moveCount = this.originalMoveCount;
+            if (this.ui && typeof this.ui.updateMoveCount === 'function') {
+                this.ui.updateMoveCount(this.game.moveCount);
+            }
+        }
+
+        if (this.ui && typeof this.ui.drawPuzzle === 'function') {
+            this.ui.drawPuzzle(this.game.tiles, this.game.gridSize);
+        }
+
+        if (this.ui && this.ui.autoSolveBtn) {
+            this.ui.autoSolveBtn.textContent = message;
+            this.ui.autoSolveBtn.disabled = false;
+        }
+
+        if (this.ui && typeof this.ui.enableGameButtons === 'function') {
+            this.ui.enableGameButtons();
+        }
+
+        setTimeout(() => {
+            if (this.ui && this.ui.autoSolveBtn) {
+                this.ui.autoSolveBtn.textContent = '🤖 Auto-Solve';
+            }
+        }, 2000);
     }
 
     executeSolveMoves() {
         // Safety check to prevent infinite loops
         if (this.game.currentSolveStep >= this.game.solveMoves.length || this.game.currentSolveStep > 100) {
-            this.game.isSolving = false;
-            this.ui.autoSolveBtn.textContent = '✅ Complete!';
-            
-            // Re-enable difficulty changes when auto-solve completes
-            this.ui.setDifficultyDisabled(false);
-            
-            setTimeout(() => {
-                this.ui.autoSolveBtn.textContent = '🤖 Auto-Solve';
-                this.ui.autoSolveBtn.disabled = false;
-                this.ui.enableGameButtons();
-            }, 2000);
+            if (this.game.isSolved()) {
+                this.game.isSolving = false;
+                this.ui.autoSolveBtn.textContent = '✅ Complete!';
+
+                // Re-enable difficulty changes when auto-solve completes
+                this.ui.setDifficultyDisabled(false);
+
+                setTimeout(() => {
+                    this.ui.autoSolveBtn.textContent = '🤖 Auto-Solve';
+                    this.ui.autoSolveBtn.disabled = false;
+                    this.ui.enableGameButtons();
+                }, 2000);
+            } else {
+                console.warn('Auto-solve finished without solving the puzzle. Restoring original state.');
+                this.handleSolveFailure('❌ Solve Failed');
+            }
             return;
         }
         
