@@ -160,54 +160,91 @@ export class GameState {
 
     // Auto-solve functionality
     findSolution() {
-        // For any size puzzle, use a simplified approach that's more reliable
-        return this.getHelpfulMoves();
-    }
-
-    getHelpfulMoves() {
-        // Generate a sequence of helpful moves without modifying the actual game state
-        const moves = [];
-        const maxMoves = Math.min(15, this.gridSize * this.gridSize * 2);
-        
-        // Work with a copy of the tiles
-        const workingTiles = [...this.tiles];
         const targetState = Array.from({ length: this.gridSize * this.gridSize }, (_, i) => i);
-        
-        for (let attempt = 0; attempt < maxMoves; attempt++) {
-            const emptyPos = workingTiles.indexOf(this.emptyIndex);
-            const validMoves = this.getValidMovesForState(workingTiles, emptyPos);
-            
-            if (validMoves.length === 0) break;
-            
-            // Find the move that gets us closer to the solution
-            let bestMove = validMoves[0];
-            let bestScore = this.calculateScoreForState(workingTiles);
-            
-            for (const move of validMoves) {
-                // Test the move on a copy
-                const testTiles = [...workingTiles];
-                [testTiles[emptyPos], testTiles[move]] = [testTiles[move], testTiles[emptyPos]];
-                
-                const newScore = this.calculateScoreForState(testTiles);
-                
-                if (newScore < bestScore) {
-                    bestScore = newScore;
-                    bestMove = move;
-                }
-            }
-            
-            moves.push(bestMove);
-            
-            // Apply the best move to working tiles
-            [workingTiles[emptyPos], workingTiles[bestMove]] = [workingTiles[bestMove], workingTiles[emptyPos]];
-            
-            // Check if solved
-            if (this.arraysEqual(workingTiles, targetState)) {
-                break;
-            }
+
+        if (this.arraysEqual(this.tiles, targetState)) {
+            return [];
         }
-        
-        return moves;
+
+        const startTiles = [...this.tiles];
+
+        if (!this.isSolvableState(startTiles)) {
+            return null;
+        }
+
+        const FOUND = Symbol('FOUND');
+        const path = [];
+        const visited = new Set();
+
+        const serialize = (tiles) => tiles.join(',');
+        const initialKey = serialize(startTiles);
+        visited.add(initialKey);
+
+        const search = (tiles, emptyPos, g, bound, prevEmptyPos) => {
+            const heuristic = this.calculateScoreForState(tiles);
+            const fScore = g + heuristic;
+
+            if (fScore > bound) return fScore;
+            if (heuristic === 0) return FOUND;
+
+            let min = Infinity;
+
+            const candidates = [];
+
+            for (const move of this.getValidMovesForState(tiles, emptyPos)) {
+                if (move === prevEmptyPos) continue;
+
+                [tiles[emptyPos], tiles[move]] = [tiles[move], tiles[emptyPos]];
+                const key = serialize(tiles);
+                const score = this.calculateScoreForState(tiles);
+                candidates.push({ move, key, score });
+                [tiles[emptyPos], tiles[move]] = [tiles[move], tiles[emptyPos]];
+            }
+
+            candidates.sort((a, b) => a.score - b.score);
+
+            for (const { move, key } of candidates) {
+                if (visited.has(key)) continue;
+
+                [tiles[emptyPos], tiles[move]] = [tiles[move], tiles[emptyPos]];
+                visited.add(key);
+                path.push(move);
+
+                const result = search(tiles, move, g + 1, bound, emptyPos);
+
+                if (result === FOUND) {
+                    return FOUND;
+                }
+
+                if (result < min) {
+                    min = result;
+                }
+
+                path.pop();
+                visited.delete(key);
+                [tiles[emptyPos], tiles[move]] = [tiles[move], tiles[emptyPos]];
+            }
+
+            return min;
+        };
+
+        let bound = this.calculateScoreForState(startTiles);
+        let emptyPos = startTiles.indexOf(this.emptyIndex);
+        const workingTiles = [...startTiles];
+
+        while (true) {
+            const result = search(workingTiles, emptyPos, 0, bound, -1);
+
+            if (result === FOUND) {
+                return [...path];
+            }
+
+            if (!Number.isFinite(result)) {
+                return null;
+            }
+
+            bound = result;
+        }
     }
     
     getValidMovesForState(tiles, emptyPos) {
@@ -246,6 +283,28 @@ export class GameState {
             }
         }
         return score;
+    }
+
+    isSolvableState(tiles) {
+        let inversions = 0;
+        for (let i = 0; i < tiles.length; i++) {
+            if (tiles[i] === this.emptyIndex) continue;
+            for (let j = i + 1; j < tiles.length; j++) {
+                if (tiles[j] === this.emptyIndex) continue;
+                if (tiles[i] > tiles[j]) inversions++;
+            }
+        }
+
+        if (this.gridSize % 2 === 1) {
+            return inversions % 2 === 0;
+        }
+
+        const emptyRowFromBottom = this.gridSize - Math.floor(tiles.indexOf(this.emptyIndex) / this.gridSize);
+        if (emptyRowFromBottom % 2 === 0) {
+            return inversions % 2 === 1;
+        }
+
+        return inversions % 2 === 0;
     }
 
     arraysEqual(a, b) {
