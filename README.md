@@ -56,10 +56,12 @@ src/
 
 ## Development
 
-The original monolithic `script.js` has been refactored into three modules:
+The project is written entirely with ES modules for clarity and maintainability. The
+core pieces are:
 
-- **GameState**: Handles puzzle logic, moves, timing, and game rules
-- **UIManager**: Manages DOM elements, canvas drawing, and user interactions. Exposes callbacks like `onRecordSave` so the orchestrator can persist leaderboard data.
-- **SlidePuzzle**: Orchestrates the game flow and connects the other modules
+- **GameState** (`src/game.js`): Handles puzzle logic, moves, timing, and game rules
+- **UIManager** (`src/ui.js`): Manages DOM elements, canvas drawing, and user interactions
+- **SlidePuzzle** (`src/main.js`): Orchestrates the game flow and connects the other modules
 
-All functionality from the original version is preserved while providing better code organization and maintainability.
+All functionality is implemented within these modules to keep the codebase modular
+and easy to extend.
