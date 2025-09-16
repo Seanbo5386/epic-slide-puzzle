@@ -69,7 +69,19 @@ export class UIManager {
         this.image = null;
         this.originalImage = null;
         this.tileSize = 0;
-        this.leaderboard = JSON.parse(localStorage.getItem('puzzleLeaderboard') || '[]');
+
+        // Load leaderboard data with error handling in case stored JSON is invalid
+        this.leaderboard = [];
+        const storedLeaderboard = localStorage.getItem('puzzleLeaderboard');
+        if (storedLeaderboard) {
+            try {
+                this.leaderboard = JSON.parse(storedLeaderboard);
+            } catch (error) {
+                console.warn('Failed to parse stored leaderboard data. Resetting to empty leaderboard.', error);
+                this.leaderboard = [];
+                localStorage.setItem('puzzleLeaderboard', '[]');
+            }
+        }
         this.playerName = localStorage.getItem('puzzlePlayerName') || '';
         this.isSelectingFile = false;
         this.shuffleModalTimer = null;
