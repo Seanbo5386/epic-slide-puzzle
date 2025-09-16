@@ -506,18 +506,11 @@ export class UIManager {
     saveRecord() {
         this.leaderboardManager.saveRecord();
 
-        const name = this.playerNameInput.value.trim() || 'Anonymous';
-        
-        // Save player name for future use
-        this.playerName = name;
-        localStorage.setItem('puzzlePlayerName', name);
-
-        this.playerNameModal.classList.add('hidden');
-
-        // Allow the orchestrator to persist the leaderboard record when available
-        if (this.onRecordSave) {
-            this.onRecordSave(name);
-        }
+        // Keep the cached player name in sync for any callers using the UI
+        // facade directly. The LeaderboardManager already persists the name
+        // and notifies the orchestrator, so we simply mirror the updated
+        // value here to avoid duplicate callbacks.
+        this.playerName = this.leaderboardManager.playerName;
     }
 
     skipRecord() {
