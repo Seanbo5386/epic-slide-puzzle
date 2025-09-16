@@ -214,15 +214,11 @@ class SlidePuzzle {
         try {
             // Store original state to restore if needed
             this.originalGameState = [...this.game.tiles];
-            
+
             // Find solution path
-            this.game.solveMoves = this.game.findSolution();
-            this.game.currentSolveStep = 0;
-            
-            // Restore original state for execution
-            this.game.tiles = [...this.originalGameState];
-            
-            if (this.game.solveMoves.length === 0) {
+            const solution = this.game.findSolution();
+
+            if (!Array.isArray(solution) || solution.length === 0) {
                 this.ui.autoSolveBtn.textContent = '❌ No Solution Found';
                 setTimeout(() => {
                     this.ui.autoSolveBtn.textContent = '🤖 Auto-Solve';
@@ -231,7 +227,13 @@ class SlidePuzzle {
                 }, 2000);
                 return;
             }
-            
+
+            this.game.solveMoves = solution;
+            this.game.currentSolveStep = 0;
+
+            // Restore original state for execution
+            this.game.tiles = [...this.originalGameState];
+
             this.executeSolveMoves();
         } catch (error) {
             console.error('Auto-solve error:', error);
@@ -304,18 +306,27 @@ class SlidePuzzle {
 
     showNextMove() {
         if (!this.game.isGameActive) return;
-        
-        const nextMove = this.game.findNextBestMove();
-        
-        if (nextMove !== -1) {
-            this.ui.drawPuzzle(this.game.tiles, this.game.gridSize);
-            this.ui.highlightTile(nextMove, this.game.gridSize, 'next-move-highlight');
-            
-            // Remove highlight after 3 seconds
-            setTimeout(() => {
-                this.ui.drawPuzzle(this.game.tiles, this.game.gridSize);
-            }, 3000);
+
+        const solution = this.game.findSolution();
+
+        if (!Array.isArray(solution) || solution.length === 0) {
+            return;
         }
+
+        const nextMove = solution[0];
+
+        if (!this.game.canMoveTile(nextMove)) {
+            console.warn('Solver suggested an invalid next move:', nextMove);
+            return;
+        }
+
+        this.ui.drawPuzzle(this.game.tiles, this.game.gridSize);
+        this.ui.highlightTile(nextMove, this.game.gridSize, 'next-move-highlight');
+
+        // Remove highlight after 3 seconds
+        setTimeout(() => {
+            this.ui.drawPuzzle(this.game.tiles, this.game.gridSize);
+        }, 3000);
     }
 
     onDifficultyChange(newGridSize) {
