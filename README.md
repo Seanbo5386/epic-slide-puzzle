@@ -59,7 +59,7 @@ src/
 The original monolithic `script.js` has been refactored into three modules:
 
 - **GameState**: Handles puzzle logic, moves, timing, and game rules
-- **UIManager**: Manages DOM elements, canvas drawing, and user interactions
+- **UIManager**: Manages DOM elements, canvas drawing, and user interactions. Exposes callbacks like `onRecordSave` so the orchestrator can persist leaderboard data.
 - **SlidePuzzle**: Orchestrates the game flow and connects the other modules
 
 All functionality from the original version is preserved while providing better code organization and maintainability.
