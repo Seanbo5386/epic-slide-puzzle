@@ -27,7 +27,7 @@ class SlidePuzzle {
         this.ui.onNextMove = () => this.showNextMove();
         this.ui.onDifficultyChange = (difficulty) => this.onDifficultyChange(difficulty);
         this.ui.onRetry = () => this.retryPuzzle();
-        this.ui.onNewImage = () => this.ui.loadNewImage();
+        this.ui.onNewImage = () => this.handleNewImageRequest();
         this.ui.onRecordSave = (name) => this.saveRecord(name);
     }
 
@@ -35,6 +35,25 @@ class SlidePuzzle {
         const gridSize = parseInt(this.ui.difficultySelect.value);
         this.game.setupGame(gridSize);
         this.ui.setupPuzzle(gridSize, image);
+    }
+
+    handleNewImageRequest() {
+        this.ui.hideWinMessage();
+        this.ui.clearShuffleTimer();
+        this.ui.setDifficultyDisabled(false);
+
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+
+        if (this.game.timer) {
+            clearInterval(this.game.timer);
+            this.game.timer = null;
+        }
+
+        this.game.isGameActive = false;
+        this.ui.loadNewImage();
     }
 
     startNewGame() {
@@ -328,5 +347,5 @@ class SlidePuzzle {
 // Initialize the game when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, creating SlidePuzzle instance');
-    window.puzzleGame = new SlidePuzzle();
+    new SlidePuzzle();
 });
