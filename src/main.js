@@ -56,12 +56,23 @@ class SlidePuzzle {
     }
 
     startTimerDisplay() {
-        if (this.timerInterval) clearInterval(this.timerInterval);
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+
+        if (this.game.isGameActive) {
+            const elapsed = this.game.updateTimer();
+            this.ui.updateTimer(elapsed);
+        } else {
+            this.ui.updateTimer(0);
+        }
+
         this.timerInterval = setInterval(() => {
-            if (this.game.isGameActive) {
-                const elapsed = this.game.updateTimer();
-                this.ui.updateTimer(elapsed);
-            }
+            if (!this.game.isGameActive) return;
+
+            const elapsed = this.game.updateTimer();
+            this.ui.updateTimer(elapsed);
         }, 1000);
     }
 

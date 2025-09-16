@@ -5,7 +5,6 @@ export class GameState {
         this.emptyIndex = 0;
         this.moveCount = 0;
         this.startTime = 0;
-        this.timer = null;
         this.isGameActive = false;
         this.bestTimes = JSON.parse(localStorage.getItem('puzzleBestTimes') || '{}');
         this.isSolving = false;
@@ -106,17 +105,11 @@ export class GameState {
         
         this.shufflePuzzle();
         
-        if (this.timer) clearInterval(this.timer);
-        this.timer = setInterval(() => this.updateTimer(), 1000);
     }
 
     endGame() {
         this.isGameActive = false;
-        if (this.timer) {
-            clearInterval(this.timer);
-            this.timer = null;
-        }
-        
+
         const endTime = Date.now();
         const totalTime = Math.floor((endTime - this.startTime) / 1000);
         
