@@ -109,6 +109,7 @@ export class UIManager {
         this.onDifficultyChange = null;
         this.onRetry = null;
         this.onNewImage = null;
+        this.onRecordSave = null; // Fired when the player confirms saving a leaderboard entry
     }
 
     setupEventListeners() {
@@ -985,9 +986,10 @@ export class UIManager {
         // Save player name for future use
         this.playerName = name;
         localStorage.setItem('puzzlePlayerName', name);
-        
+
         this.playerNameModal.classList.add('hidden');
-        
+
+        // Allow the orchestrator to persist the leaderboard record when available
         if (this.onRecordSave) {
             this.onRecordSave(name);
         }
