@@ -7,7 +7,13 @@ export class GameState {
         this.startTime = 0;
         this.timer = null;
         this.isGameActive = false;
-        this.bestTimes = JSON.parse(localStorage.getItem('puzzleBestTimes') || '{}');
+        const storedBestTimes = localStorage.getItem('puzzleBestTimes');
+        try {
+            this.bestTimes = storedBestTimes ? JSON.parse(storedBestTimes) : {};
+        } catch (error) {
+            console.warn('Failed to parse puzzle best times; using defaults.', error);
+            this.bestTimes = {};
+        }
         this.isSolving = false;
         this.solveMoves = [];
         this.currentSolveStep = 0;
