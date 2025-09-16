@@ -227,7 +227,6 @@ export class SlidePuzzle {
                 this.handleSolveFailure('❌ No Solution Found');
                 return;
             }
-
             this.executeSolveMoves();
         } catch (error) {
             console.error('Auto-solve error:', error);
@@ -339,18 +338,27 @@ export class SlidePuzzle {
 
     showNextMove() {
         if (!this.game.isGameActive) return;
-        
-        const nextMove = this.game.findNextBestMove();
-        
-        if (nextMove !== -1) {
-            this.ui.drawPuzzle(this.game.tiles, this.game.gridSize);
-            this.ui.highlightTile(nextMove, this.game.gridSize, 'next-move-highlight');
-            
-            // Remove highlight after 3 seconds
-            setTimeout(() => {
-                this.ui.drawPuzzle(this.game.tiles, this.game.gridSize);
-            }, 3000);
+
+        const solution = this.game.findSolution();
+
+        if (!Array.isArray(solution) || solution.length === 0) {
+            return;
         }
+
+        const nextMove = solution[0];
+
+        if (!this.game.canMoveTile(nextMove)) {
+            console.warn('Solver suggested an invalid next move:', nextMove);
+            return;
+        }
+
+        this.ui.drawPuzzle(this.game.tiles, this.game.gridSize);
+        this.ui.highlightTile(nextMove, this.game.gridSize, 'next-move-highlight');
+
+        // Remove highlight after 3 seconds
+        setTimeout(() => {
+            this.ui.drawPuzzle(this.game.tiles, this.game.gridSize);
+        }, 3000);
     }
 
     onDifficultyChange(newGridSize) {
