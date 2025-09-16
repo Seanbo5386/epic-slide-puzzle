@@ -5,9 +5,14 @@ export class GameState {
         this.emptyIndex = 0;
         this.moveCount = 0;
         this.startTime = 0;
-        this.timer = null;
         this.isGameActive = false;
-        this.bestTimes = JSON.parse(localStorage.getItem('puzzleBestTimes') || '{}');
+        const storedBestTimes = localStorage.getItem('puzzleBestTimes');
+        try {
+            this.bestTimes = storedBestTimes ? JSON.parse(storedBestTimes) : {};
+        } catch (error) {
+            console.warn('Failed to parse puzzle best times; using defaults.', error);
+            this.bestTimes = {};
+        }
         this.isSolving = false;
         this.solveMoves = [];
         this.currentSolveStep = 0;
@@ -106,17 +111,11 @@ export class GameState {
         
         this.shufflePuzzle();
         
-        if (this.timer) clearInterval(this.timer);
-        this.timer = setInterval(() => this.updateTimer(), 1000);
     }
 
     endGame() {
         this.isGameActive = false;
-        if (this.timer) {
-            clearInterval(this.timer);
-            this.timer = null;
-        }
-        
+
         const endTime = Date.now();
         const totalTime = Math.floor((endTime - this.startTime) / 1000);
         
@@ -259,7 +258,7 @@ export class GameState {
         
         // Find the move that puts a tile closer to its correct position
         let bestMove = -1;
-        let bestScore = -1;
+        let bestScore = Infinity;
         
         for (const move of validMoves) {
             const tileNum = this.tiles[move];
@@ -267,12 +266,12 @@ export class GameState {
             const distance = this.getManhattanDistance(move, correctPos);
             const newDistance = this.getManhattanDistance(emptyPos, correctPos);
             
-            if (newDistance < distance && newDistance < bestScore || bestScore === -1) {
+            if (bestScore === -1 || (newDistance < distance && newDistance < bestScore)) {
                 bestScore = newDistance;
                 bestMove = move;
             }
         }
-        
+
         return bestMove !== -1 ? bestMove : (validMoves.length > 0 ? validMoves[0] : -1);
     }
 

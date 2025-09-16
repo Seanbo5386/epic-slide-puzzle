@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "python3 -m http.server 8000",
     "dev-win": "python -m http.server 8000",
-    "start": "python3 -m http.server 8000"
+    "start": "python3 -m http.server 8000",
+    "test": "node tests/findNextBestMove.test.js"
   },
   "keywords": ["puzzle", "game", "javascript", "canvas"],
   "author": "",

@@ -76,6 +76,20 @@ export class UIManager {
         this.image = null;
         this.originalImage = null;
         this.tileSize = 0;
+
+        // Load leaderboard data with error handling in case stored JSON is invalid
+        this.leaderboard = [];
+        const storedLeaderboard = localStorage.getItem('puzzleLeaderboard');
+        if (storedLeaderboard) {
+            try {
+                this.leaderboard = JSON.parse(storedLeaderboard);
+            } catch (error) {
+                console.warn('Failed to parse stored leaderboard data. Resetting to empty leaderboard.', error);
+                this.leaderboard = [];
+                localStorage.setItem('puzzleLeaderboard', '[]');
+            }
+        }
+        this.playerName = localStorage.getItem('puzzlePlayerName') || '';
         this.isSelectingFile = false;
         this.shuffleModalTimer = null;
 
@@ -96,7 +110,7 @@ export class UIManager {
         this.onDifficultyChange = null;
         this.onRetry = null;
         this.onNewImage = null;
-        this.onRecordSave = null;
+        this.onRecordSave = null; // Fired when the player confirms saving a leaderboard entry
     }
 
     setupEventListeners() {
@@ -189,7 +203,11 @@ export class UIManager {
             this.newPuzzleBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                this.loadNewImage();
+                if (this.onNewImage) {
+                    this.onNewImage();
+                } else {
+                    this.loadNewImage();
+                }
             });
         }
         
@@ -202,7 +220,11 @@ export class UIManager {
             } else if (e.target.id === 'newPuzzleBtn') {
                 e.preventDefault();
                 e.stopPropagation();
-                this.loadNewImage();
+                if (this.onNewImage) {
+                    this.onNewImage();
+                } else {
+                    this.loadNewImage();
+                }
             }
         });
     }
@@ -483,6 +505,19 @@ export class UIManager {
 
     saveRecord() {
         this.leaderboardManager.saveRecord();
+
+        const name = this.playerNameInput.value.trim() || 'Anonymous';
+        
+        // Save player name for future use
+        this.playerName = name;
+        localStorage.setItem('puzzlePlayerName', name);
+
+        this.playerNameModal.classList.add('hidden');
+
+        // Allow the orchestrator to persist the leaderboard record when available
+        if (this.onRecordSave) {
+            this.onRecordSave(name);
+        }
     }
 
     skipRecord() {
