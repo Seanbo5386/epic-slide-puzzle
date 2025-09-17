@@ -59,6 +59,7 @@ export class UIManager {
         this.shuffleModal = document.getElementById('shuffleModal');
         this.shufflePreviewCanvas = document.getElementById('shufflePreviewCanvas');
         this.shufflePreviewCtx = this.shufflePreviewCanvas.getContext('2d');
+        this.shuffleDifficultySelect = document.getElementById('shuffleDifficulty');
         this.startShuffleBtn = document.getElementById('startShuffleBtn');
         this.cancelShuffleBtn = document.getElementById('cancelShuffleBtn');
         
@@ -92,6 +93,7 @@ export class UIManager {
         this.playerName = localStorage.getItem('puzzlePlayerName') || '';
         this.isSelectingFile = false;
         this.shuffleModalTimer = null;
+        this.isSyncingDifficulty = false;
 
         // Animation and effects
         this.particles = [];
@@ -168,8 +170,13 @@ export class UIManager {
         this.startShuffleBtn.addEventListener('click', () => this.confirmShuffle());
         this.cancelShuffleBtn.addEventListener('click', () => this.cancelShuffle());
         this.difficultySelect.addEventListener('change', () => {
-            if (this.onDifficultyChange) this.onDifficultyChange(parseInt(this.difficultySelect.value));
+            this.handleDifficultySelectionChange(parseInt(this.difficultySelect.value, 10), 'main');
         });
+        if (this.shuffleDifficultySelect) {
+            this.shuffleDifficultySelect.addEventListener('change', () => {
+                this.handleDifficultySelectionChange(parseInt(this.shuffleDifficultySelect.value, 10), 'modal');
+            });
+        }
         
         this.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
         this.canvas.addEventListener('mousemove', (e) => this.handleCanvasHover(e));
@@ -297,11 +304,14 @@ export class UIManager {
     setupPuzzle(gridSize, image) {
         this.image = image;
         this.tileSize = this.canvas.width / gridSize;
+        if (this.shuffleDifficultySelect) {
+            this.shuffleDifficultySelect.value = gridSize.toString();
+        }
         this.drawPuzzle(null, gridSize); // Initial draw
         this.drawPreview();
         this.shuffleBtn.disabled = false;
         this.enableGameButtons();
-        
+
         // Show shuffle modal immediately
         this.showShuffleModal();
     }
@@ -359,12 +369,43 @@ export class UIManager {
         this.nextMoveBtn.disabled = true;
     }
 
+    handleDifficultySelectionChange(value, source = 'main') {
+        if (Number.isNaN(value)) return;
+
+        const valueStr = value.toString();
+        const currentMainValue = this.difficultySelect.value;
+        const currentModalValue = this.shuffleDifficultySelect ? this.shuffleDifficultySelect.value : null;
+
+        if (this.isSyncingDifficulty) return;
+        this.isSyncingDifficulty = true;
+
+        if (source !== 'main' && currentMainValue !== valueStr) {
+            this.difficultySelect.value = valueStr;
+        }
+
+        if (this.shuffleDifficultySelect && source !== 'modal' && currentModalValue !== valueStr) {
+            this.shuffleDifficultySelect.value = valueStr;
+        }
+
+        this.isSyncingDifficulty = false;
+
+        if (this.onDifficultyChange) this.onDifficultyChange(value);
+    }
+
     setDifficultyDisabled(disabled) {
         this.difficultySelect.disabled = disabled;
         if (disabled) {
             this.difficultySelect.classList.add('disabled-during-game');
         } else {
             this.difficultySelect.classList.remove('disabled-during-game');
+        }
+        if (this.shuffleDifficultySelect) {
+            this.shuffleDifficultySelect.disabled = disabled;
+            if (disabled) {
+                this.shuffleDifficultySelect.classList.add('disabled-during-game');
+            } else {
+                this.shuffleDifficultySelect.classList.remove('disabled-during-game');
+            }
         }
     }
 
@@ -461,11 +502,15 @@ export class UIManager {
     // Shuffle Modal System
     showShuffleModal() {
         if (!this.image) return;
-        
+
         // Draw preview in modal
         this.shufflePreviewCtx.clearRect(0, 0, this.shufflePreviewCanvas.width, this.shufflePreviewCanvas.height);
         this.shufflePreviewCtx.drawImage(this.image, 0, 0, this.shufflePreviewCanvas.width, this.shufflePreviewCanvas.height);
-        
+
+        if (this.shuffleDifficultySelect) {
+            this.shuffleDifficultySelect.value = this.difficultySelect.value;
+        }
+
         this.shuffleModal.classList.remove('hidden');
     }
 
