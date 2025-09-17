@@ -17,6 +17,9 @@ export class CropManager {
             cropHeight: 200,
             canvasScale: 1
         };
+
+        this.boundHandleResize = this.handleResize.bind(this);
+        this.resizeFrame = null;
     }
 
     handleImageUpload(event) {
@@ -52,29 +55,41 @@ export class CropManager {
         if (!this.ui.originalImage) return;
 
         this.ui.cropModal.classList.remove('hidden');
+        this.detachResizeListener();
         this.setupCropCanvas();
         this.initializeCropSelection();
+        window.addEventListener('resize', this.boundHandleResize);
     }
 
-    setupCropCanvas() {
-        const maxWidth = 600;
-        const maxHeight = 400;
-        let displayWidth = this.ui.originalImage.width;
-        let displayHeight = this.ui.originalImage.height;
+    setupCropCanvas({ preserveSelection = false } = {}) {
+        const previousWidth = this.ui.cropCanvas.width;
+        const previousHeight = this.ui.cropCanvas.height;
+        const hadPreviousDimensions = preserveSelection && previousWidth && previousHeight;
 
-        const scale = Math.min(maxWidth / displayWidth, maxHeight / displayHeight, 1);
-        displayWidth *= scale;
-        displayHeight *= scale;
+        const { width: displayWidth, height: displayHeight } = this.calculateDisplayDimensions();
 
         this.ui.cropCanvas.width = displayWidth;
         this.ui.cropCanvas.height = displayHeight;
-        this.state.canvasScale = displayWidth / this.ui.originalImage.width;
+        this.state.canvasScale = displayWidth / Math.max(1, this.ui.originalImage.width);
 
         this.ui.cropCtx.clearRect(0, 0, displayWidth, displayHeight);
         this.ui.cropCtx.drawImage(this.ui.originalImage, 0, 0, displayWidth, displayHeight);
 
         this.ui.cropOverlay.style.width = `${displayWidth}px`;
         this.ui.cropOverlay.style.height = `${displayHeight}px`;
+
+        if (hadPreviousDimensions) {
+            const scaleX = displayWidth / previousWidth;
+            const scaleY = displayHeight / previousHeight;
+
+            this.state.cropX *= scaleX;
+            this.state.cropY *= scaleY;
+            this.state.cropWidth *= scaleX;
+            this.state.cropHeight *= scaleY;
+
+            this.constrainCropSelection();
+            this.updateCropSelection();
+        }
     }
 
     initializeCropSelection() {
@@ -107,8 +122,40 @@ export class CropManager {
         this.ui.cropSelection.style.height = `${cropHeight}px`;
     }
 
+    calculateDisplayDimensions() {
+        const originalWidth = Math.max(1, this.ui.originalImage.width);
+        const originalHeight = Math.max(1, this.ui.originalImage.height);
+
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth || originalWidth;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight || originalHeight;
+
+        const maxWidth = Math.max(280, Math.min(900, viewportWidth * 0.9));
+        const maxHeight = Math.max(220, Math.min(700, viewportHeight * 0.75));
+
+        const scale = Math.min(maxWidth / originalWidth, maxHeight / originalHeight, 1);
+
+        const width = Math.round(originalWidth * scale);
+        const height = Math.round(originalHeight * scale);
+
+        return { width, height };
+    }
+
+    constrainCropSelection() {
+        const minSize = 50;
+        const maxWidth = this.ui.cropCanvas.width;
+        const maxHeight = this.ui.cropCanvas.height;
+
+        this.state.cropWidth = Math.max(minSize, Math.min(this.state.cropWidth, maxWidth));
+        this.state.cropHeight = Math.max(minSize, Math.min(this.state.cropHeight, maxHeight));
+
+        this.state.cropX = Math.max(0, Math.min(this.state.cropX, maxWidth - this.state.cropWidth));
+        this.state.cropY = Math.max(0, Math.min(this.state.cropY, maxHeight - this.state.cropHeight));
+    }
+
     confirmCrop() {
         if (!this.ui.originalImage) return;
+
+        this.detachResizeListener();
 
         const tempCanvas = document.createElement('canvas');
         const tempCtx = tempCanvas.getContext('2d');
@@ -144,6 +191,7 @@ export class CropManager {
         this.ui.imageInput.value = '';
         this.ui.isSelectingFile = false;
         this.ui.clearShuffleTimer();
+        this.detachResizeListener();
     }
 
     onCropMouseDown(e) {
@@ -355,5 +403,32 @@ export class CropManager {
         this.state.isDragging = false;
         this.state.isResizing = false;
         this.state.dragHandle = null;
+    }
+
+    handleResize() {
+        if (this.ui.cropModal.classList.contains('hidden') || !this.ui.originalImage) {
+            return;
+        }
+
+        this.state.isDragging = false;
+        this.state.isResizing = false;
+        this.state.dragHandle = null;
+
+        if (this.resizeFrame) {
+            cancelAnimationFrame(this.resizeFrame);
+        }
+
+        this.resizeFrame = requestAnimationFrame(() => {
+            this.resizeFrame = null;
+            this.setupCropCanvas({ preserveSelection: true });
+        });
+    }
+
+    detachResizeListener() {
+        if (this.resizeFrame) {
+            cancelAnimationFrame(this.resizeFrame);
+            this.resizeFrame = null;
+        }
+        window.removeEventListener('resize', this.boundHandleResize);
     }
 }
