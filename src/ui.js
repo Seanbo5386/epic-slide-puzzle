@@ -59,6 +59,7 @@ export class UIManager {
         this.shuffleModal = document.getElementById('shuffleModal');
         this.shufflePreviewCanvas = document.getElementById('shufflePreviewCanvas');
         this.shufflePreviewCtx = this.shufflePreviewCanvas.getContext('2d');
+        this.shuffleDifficultySelect = document.getElementById('shuffleDifficulty');
         this.startShuffleBtn = document.getElementById('startShuffleBtn');
         this.cancelShuffleBtn = document.getElementById('cancelShuffleBtn');
         
@@ -70,6 +71,10 @@ export class UIManager {
         this.cropSelection = document.getElementById('cropSelection');
         this.cropConfirm = document.getElementById('cropConfirm');
         this.cropCancel = document.getElementById('cropCancel');
+        this.cropModalContent = this.cropModal.querySelector('.crop-modal-content');
+        this.cropContainer = this.cropModal.querySelector('.crop-container');
+        this.cropHeader = this.cropModal.querySelector('.crop-header');
+        this.cropActions = this.cropModal.querySelector('.crop-actions');
     }
 
     initializeState() {
@@ -92,6 +97,7 @@ export class UIManager {
         this.playerName = localStorage.getItem('puzzlePlayerName') || '';
         this.isSelectingFile = false;
         this.shuffleModalTimer = null;
+        this.isSyncingDifficulty = false;
 
         // Animation and effects
         this.particles = [];
@@ -168,8 +174,13 @@ export class UIManager {
         this.startShuffleBtn.addEventListener('click', () => this.confirmShuffle());
         this.cancelShuffleBtn.addEventListener('click', () => this.cancelShuffle());
         this.difficultySelect.addEventListener('change', () => {
-            if (this.onDifficultyChange) this.onDifficultyChange(parseInt(this.difficultySelect.value));
+            this.handleDifficultySelectionChange(parseInt(this.difficultySelect.value, 10), 'main');
         });
+        if (this.shuffleDifficultySelect) {
+            this.shuffleDifficultySelect.addEventListener('change', () => {
+                this.handleDifficultySelectionChange(parseInt(this.shuffleDifficultySelect.value, 10), 'modal');
+            });
+        }
         
         this.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
         this.canvas.addEventListener('mousemove', (e) => this.handleCanvasHover(e));
@@ -178,17 +189,11 @@ export class UIManager {
         // Crop event listeners
         this.cropConfirm.addEventListener('click', () => this.cropManager.confirmCrop());
         this.cropCancel.addEventListener('click', () => this.cropManager.cancelCrop());
-        // Mouse events for crop
-        this.cropOverlay.addEventListener('mousedown', (e) => this.cropManager.onCropMouseDown(e));
-        this.cropOverlay.addEventListener('mousemove', (e) => this.cropManager.onCropMouseMove(e));
-        this.cropOverlay.addEventListener('mouseup', () => this.cropManager.onCropMouseUp());
-        this.cropOverlay.addEventListener('mouseleave', () => this.cropManager.onCropMouseUp());
-
-        // Touch events for mobile crop
-        this.cropOverlay.addEventListener('touchstart', (e) => this.cropManager.onCropTouchStart(e));
-        this.cropOverlay.addEventListener('touchmove', (e) => this.cropManager.onCropTouchMove(e));
-        this.cropOverlay.addEventListener('touchend', () => this.cropManager.onCropTouchEnd());
-        this.cropOverlay.addEventListener('touchcancel', () => this.cropManager.onCropTouchEnd());
+        const pointerListenerOptions = { passive: false };
+        this.cropOverlay.addEventListener('pointerdown', (e) => this.cropManager.onPointerDown(e), pointerListenerOptions);
+        this.cropOverlay.addEventListener('pointermove', (e) => this.cropManager.onPointerMove(e), pointerListenerOptions);
+        this.cropOverlay.addEventListener('pointerup', (e) => this.cropManager.onPointerUp(e));
+        this.cropOverlay.addEventListener('pointercancel', (e) => this.cropManager.onPointerUp(e));
         
         // Win message button event listeners
         if (this.retryBtn) {
@@ -297,11 +302,14 @@ export class UIManager {
     setupPuzzle(gridSize, image) {
         this.image = image;
         this.tileSize = this.canvas.width / gridSize;
+        if (this.shuffleDifficultySelect) {
+            this.shuffleDifficultySelect.value = gridSize.toString();
+        }
         this.drawPuzzle(null, gridSize); // Initial draw
         this.drawPreview();
         this.shuffleBtn.disabled = false;
         this.enableGameButtons();
-        
+
         // Show shuffle modal immediately
         this.showShuffleModal();
     }
@@ -359,12 +367,43 @@ export class UIManager {
         this.nextMoveBtn.disabled = true;
     }
 
+    handleDifficultySelectionChange(value, source = 'main') {
+        if (Number.isNaN(value)) return;
+
+        const valueStr = value.toString();
+        const currentMainValue = this.difficultySelect.value;
+        const currentModalValue = this.shuffleDifficultySelect ? this.shuffleDifficultySelect.value : null;
+
+        if (this.isSyncingDifficulty) return;
+        this.isSyncingDifficulty = true;
+
+        if (source !== 'main' && currentMainValue !== valueStr) {
+            this.difficultySelect.value = valueStr;
+        }
+
+        if (this.shuffleDifficultySelect && source !== 'modal' && currentModalValue !== valueStr) {
+            this.shuffleDifficultySelect.value = valueStr;
+        }
+
+        this.isSyncingDifficulty = false;
+
+        if (this.onDifficultyChange) this.onDifficultyChange(value);
+    }
+
     setDifficultyDisabled(disabled) {
         this.difficultySelect.disabled = disabled;
         if (disabled) {
             this.difficultySelect.classList.add('disabled-during-game');
         } else {
             this.difficultySelect.classList.remove('disabled-during-game');
+        }
+        if (this.shuffleDifficultySelect) {
+            this.shuffleDifficultySelect.disabled = disabled;
+            if (disabled) {
+                this.shuffleDifficultySelect.classList.add('disabled-during-game');
+            } else {
+                this.shuffleDifficultySelect.classList.remove('disabled-during-game');
+            }
         }
     }
 
@@ -402,18 +441,6 @@ export class UIManager {
         this.cropManager.showCropModal();
     }
 
-    setupCropCanvas() {
-        this.cropManager.setupCropCanvas();
-    }
-
-    initializeCropSelection() {
-        this.cropManager.initializeCropSelection();
-    }
-
-    updateCropSelection() {
-        this.cropManager.updateCropSelection();
-    }
-
     confirmCrop() {
         this.cropManager.confirmCrop();
     }
@@ -422,50 +449,18 @@ export class UIManager {
         this.cropManager.cancelCrop();
     }
 
-    onCropMouseDown(e) {
-        this.cropManager.onCropMouseDown(e);
-    }
-
-    onCropMouseMove(e) {
-        this.cropManager.onCropMouseMove(e);
-    }
-
-    onCropMouseUp() {
-        this.cropManager.onCropMouseUp();
-    }
-
-    getHandleAtPosition(x, y, customTolerance = null) {
-        return this.cropManager.getHandleAtPosition(x, y, customTolerance);
-    }
-
-    isInsideCropArea(x, y) {
-        return this.cropManager.isInsideCropArea(x, y);
-    }
-
-    resizeCropSelection(deltaX, deltaY) {
-        this.cropManager.resizeCropSelection(deltaX, deltaY);
-    }
-
-    onCropTouchStart(e) {
-        this.cropManager.onCropTouchStart(e);
-    }
-
-    onCropTouchMove(e) {
-        this.cropManager.onCropTouchMove(e);
-    }
-
-    onCropTouchEnd() {
-        this.cropManager.onCropTouchEnd();
-    }
-
     // Shuffle Modal System
     showShuffleModal() {
         if (!this.image) return;
-        
+
         // Draw preview in modal
         this.shufflePreviewCtx.clearRect(0, 0, this.shufflePreviewCanvas.width, this.shufflePreviewCanvas.height);
         this.shufflePreviewCtx.drawImage(this.image, 0, 0, this.shufflePreviewCanvas.width, this.shufflePreviewCanvas.height);
-        
+
+        if (this.shuffleDifficultySelect) {
+            this.shuffleDifficultySelect.value = this.difficultySelect.value;
+        }
+
         this.shuffleModal.classList.remove('hidden');
     }
 

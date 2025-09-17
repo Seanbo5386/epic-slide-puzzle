@@ -138,7 +138,18 @@
             <div class="shuffle-preview">
                 <canvas id="shufflePreviewCanvas" width="200" height="200"></canvas>
             </div>
-            
+
+            <div class="shuffle-settings">
+                <label for="shuffleDifficulty" class="shuffle-label">Select Puzzle Size</label>
+                <select id="shuffleDifficulty" class="difficulty-select">
+                    <option value="2">Super Easy (2×2)</option>
+                    <option value="3">Easy (3×3)</option>
+                    <option value="4">Medium (4×4)</option>
+                    <option value="5">Hard (5×5)</option>
+                    <option value="6">Expert (6×6)</option>
+                </select>
+            </div>
+
             <div class="crop-actions">
                 <button id="startShuffleBtn" class="btn btn-primary">🎲 Shuffle & Start!</button>
                 <button id="cancelShuffleBtn" class="btn btn-secondary">Not Yet</button>
