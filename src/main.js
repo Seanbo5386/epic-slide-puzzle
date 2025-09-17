@@ -1,6 +1,12 @@
 import { GameState } from './game.js';
 import { UIManager } from './ui.js';
 
+const SOLVER_MAX_GRID_SIZE = 4;
+const AUTO_SOLVE_DEFAULT_LABEL = '🤖 Auto-Solve';
+const NEXT_MOVE_DEFAULT_LABEL = '➡️ Next Move';
+const AUTO_SOLVE_UNSUPPORTED_LABEL = `⚠️ Auto-Solve supports up to ${SOLVER_MAX_GRID_SIZE}×${SOLVER_MAX_GRID_SIZE}`;
+const NEXT_MOVE_UNSUPPORTED_LABEL = '⚠️ Next Move Unavailable';
+
 export class SlidePuzzle {
     constructor() {
         this.game = new GameState();
@@ -13,6 +19,7 @@ export class SlidePuzzle {
         this.setupCallbacks();
         this.ui.updateBestTime(this.game.getBestTime());
         this.ui.updateUserRank();
+        this.applySolverAvailability();
     }
 
     setupCallbacks() {
@@ -35,6 +42,7 @@ export class SlidePuzzle {
         const gridSize = parseInt(this.ui.difficultySelect.value);
         this.game.setupGame(gridSize);
         this.ui.setupPuzzle(gridSize, image);
+        this.applySolverAvailability();
     }
 
     handleNewImageRequest() {
@@ -54,6 +62,7 @@ export class SlidePuzzle {
 
         this.game.isGameActive = false;
         this.ui.loadNewImage();
+        this.applySolverAvailability();
     }
 
     startNewGame() {
@@ -62,6 +71,7 @@ export class SlidePuzzle {
         this.game.startGame();
         this.ui.hideWinMessage();
         this.ui.enableGameButtons();
+        this.applySolverAvailability();
         this.ui.updateMoveCount(0);
         this.ui.setDifficultyDisabled(true);
         
@@ -197,16 +207,21 @@ export class SlidePuzzle {
 
     autoSolve() {
         if (!this.game.isGameActive || this.game.isSolving) return;
-        
+
         // Check if already solved
         if (this.game.isSolved()) {
             this.ui.autoSolveBtn.textContent = '✅ Already Solved!';
             setTimeout(() => {
-                this.ui.autoSolveBtn.textContent = '🤖 Auto-Solve';
+                this.ui.autoSolveBtn.textContent = SlidePuzzle.AUTO_SOLVE_LABEL;
             }, 2000);
             return;
         }
-        
+
+        if (!this.isSolverSupported()) {
+            this.notifySolverUnsupported();
+            return;
+        }
+
         this.game.isSolving = true;
         this.ui.autoSolveBtn.textContent = '🔄 Solving...';
         this.ui.autoSolveBtn.disabled = true;
@@ -268,7 +283,7 @@ export class SlidePuzzle {
 
         setTimeout(() => {
             if (this.ui && this.ui.autoSolveBtn) {
-                this.ui.autoSolveBtn.textContent = '🤖 Auto-Solve';
+                this.ui.autoSolveBtn.textContent = SlidePuzzle.AUTO_SOLVE_LABEL;
             }
         }, 2000);
     }
@@ -284,7 +299,7 @@ export class SlidePuzzle {
                 this.ui.setDifficultyDisabled(false);
 
                 setTimeout(() => {
-                    this.ui.autoSolveBtn.textContent = '🤖 Auto-Solve';
+                    this.ui.autoSolveBtn.textContent = SlidePuzzle.AUTO_SOLVE_LABEL;
                     this.ui.autoSolveBtn.disabled = false;
                     this.ui.enableGameButtons();
                 }, 2000);
@@ -339,6 +354,11 @@ export class SlidePuzzle {
     showNextMove() {
         if (!this.game.isGameActive) return;
 
+        if (!this.isSolverSupported()) {
+            this.notifySolverUnsupported();
+            return;
+        }
+
         const solution = this.game.findSolution();
 
         if (!Array.isArray(solution) || solution.length === 0) {
@@ -368,15 +388,16 @@ export class SlidePuzzle {
             this.ui.difficultySelect.value = this.game.gridSize.toString();
             return;
         }
-        
+
         this.game.gridSize = newGridSize;
         this.ui.updateBestTime(this.game.getBestTime());
         this.ui.clearShuffleTimer(); // Clear any pending modal
-        
+
         if (this.ui.image) {
             this.game.setupGame(newGridSize);
             this.ui.setupPuzzle(newGridSize, this.ui.image);
         }
+        this.applySolverAvailability();
     }
 
     retryPuzzle() {
@@ -386,17 +407,61 @@ export class SlidePuzzle {
 
     saveRecord(name) {
         if (!this.game.lastGameStats) return;
-        
+
         // Add to leaderboard
         const record = {
             ...this.game.lastGameStats,
             name: name,
             id: Date.now() + Math.random()
         };
-        
+
         this.ui.addToLeaderboard(record);
     }
+
+    isSolverSupported() {
+        return this.game.gridSize <= SlidePuzzle.SOLVER_MAX_GRID_SIZE;
+    }
+
+    notifySolverUnsupported() {
+        if (!this.ui) return;
+
+        if (this.ui.autoSolveBtn) {
+            this.ui.autoSolveBtn.textContent = SlidePuzzle.AUTO_SOLVE_UNSUPPORTED_LABEL;
+            this.ui.autoSolveBtn.disabled = true;
+        }
+
+        if (this.ui.nextMoveBtn) {
+            this.ui.nextMoveBtn.textContent = SlidePuzzle.NEXT_MOVE_UNSUPPORTED_LABEL;
+            this.ui.nextMoveBtn.disabled = true;
+        }
+
+    }
+
+    applySolverAvailability() {
+        if (!this.ui) return;
+
+        if (!this.isSolverSupported()) {
+            this.notifySolverUnsupported();
+            return;
+        }
+
+        if (this.ui.autoSolveBtn && !this.game.isSolving) {
+            this.ui.autoSolveBtn.textContent = SlidePuzzle.AUTO_SOLVE_LABEL;
+            this.ui.autoSolveBtn.disabled = !this.game.isGameActive || this.game.isSolving;
+        }
+
+        if (this.ui.nextMoveBtn) {
+            this.ui.nextMoveBtn.textContent = SlidePuzzle.NEXT_MOVE_LABEL;
+            this.ui.nextMoveBtn.disabled = !this.game.isGameActive;
+        }
+    }
 }
+
+SlidePuzzle.SOLVER_MAX_GRID_SIZE = SOLVER_MAX_GRID_SIZE;
+SlidePuzzle.AUTO_SOLVE_LABEL = AUTO_SOLVE_DEFAULT_LABEL;
+SlidePuzzle.NEXT_MOVE_LABEL = NEXT_MOVE_DEFAULT_LABEL;
+SlidePuzzle.AUTO_SOLVE_UNSUPPORTED_LABEL = AUTO_SOLVE_UNSUPPORTED_LABEL;
+SlidePuzzle.NEXT_MOVE_UNSUPPORTED_LABEL = NEXT_MOVE_UNSUPPORTED_LABEL;
 
 // Initialize the game when the page loads
 document.addEventListener('DOMContentLoaded', () => {

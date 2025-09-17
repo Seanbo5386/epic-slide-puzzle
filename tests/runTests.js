@@ -18,5 +18,6 @@ if (typeof globalThis.localStorage === 'undefined') {
 
 await import('./findNextBestMove.test.js');
 await import('./executeSolveMovesFailure.test.js');
+await import('./solverAvailability.test.js');
 
 console.log('All tests completed.');
