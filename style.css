@@ -874,6 +874,43 @@ body {
     animation: shufflePreviewPulse 2s infinite;
 }
 
+.shuffle-settings {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    margin: 10px 0 25px;
+    padding: 18px 24px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.12), rgba(118, 75, 162, 0.1));
+    border-radius: 18px;
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    box-shadow: 0 14px 36px rgba(102, 126, 234, 0.18);
+}
+
+.shuffle-label {
+    font-weight: 600;
+    color: #6c757d;
+    text-align: center;
+    letter-spacing: 0.3px;
+}
+
+.shuffle-settings .difficulty-select {
+    width: 100%;
+    max-width: 240px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(237, 242, 255, 0.96));
+    border: 2px solid rgba(102, 126, 234, 0.3);
+    box-shadow: 0 12px 30px rgba(102, 126, 234, 0.22);
+    transition: all 0.3s ease;
+}
+
+.shuffle-settings .difficulty-select:hover,
+.shuffle-settings .difficulty-select:focus {
+    background: white;
+    border-color: #7f9cf5;
+    box-shadow: 0 16px 36px rgba(102, 126, 234, 0.28);
+    outline: none;
+}
+
 @keyframes shufflePreviewPulse {
     0%, 100% { transform: scale(1); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); }
     50% { transform: scale(1.02); box-shadow: 0 15px 40px rgba(102, 126, 234, 0.3); }
