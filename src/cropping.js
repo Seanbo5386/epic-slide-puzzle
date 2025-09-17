@@ -612,4 +612,31 @@ export class CropManager {
         this.detachResizeListener();
         this.resetPointerState();
     }
+
+    handleResize() {
+        if (this.ui.cropModal.classList.contains('hidden') || !this.ui.originalImage) {
+            return;
+        }
+
+        this.state.isDragging = false;
+        this.state.isResizing = false;
+        this.state.dragHandle = null;
+
+        if (this.resizeFrame) {
+            cancelAnimationFrame(this.resizeFrame);
+        }
+
+        this.resizeFrame = requestAnimationFrame(() => {
+            this.resizeFrame = null;
+            this.setupCropCanvas({ preserveSelection: true });
+        });
+    }
+
+    detachResizeListener() {
+        if (this.resizeFrame) {
+            cancelAnimationFrame(this.resizeFrame);
+            this.resizeFrame = null;
+        }
+        window.removeEventListener('resize', this.boundHandleResize);
+    }
 }
