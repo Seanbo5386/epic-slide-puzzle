@@ -129,10 +129,60 @@ export class CropManager {
         const viewportWidth = window.innerWidth || document.documentElement.clientWidth || originalWidth;
         const viewportHeight = window.innerHeight || document.documentElement.clientHeight || originalHeight;
 
-        const maxWidth = Math.max(280, Math.min(900, viewportWidth * 0.9));
-        const maxHeight = Math.max(220, Math.min(700, viewportHeight * 0.75));
+        const modalContent = this.ui.cropModal
+            ? this.ui.cropModal.querySelector('.crop-modal-content')
+            : null;
 
-        const scale = Math.min(maxWidth / originalWidth, maxHeight / originalHeight, 1);
+        const parseNumeric = (value) => Number.parseFloat(value) || 0;
+
+        let maxCanvasWidth = viewportWidth * 0.9;
+        let maxCanvasHeight = viewportHeight * 0.9;
+
+        if (modalContent) {
+            const contentStyles = window.getComputedStyle(modalContent);
+            const paddingX = parseNumeric(contentStyles.paddingLeft) + parseNumeric(contentStyles.paddingRight);
+            const paddingY = parseNumeric(contentStyles.paddingTop) + parseNumeric(contentStyles.paddingBottom);
+            const marginX = parseNumeric(contentStyles.marginLeft) + parseNumeric(contentStyles.marginRight);
+            const marginY = parseNumeric(contentStyles.marginTop) + parseNumeric(contentStyles.marginBottom);
+
+            maxCanvasWidth = Math.min(maxCanvasWidth, viewportWidth - marginX);
+            maxCanvasWidth = Math.max(0, maxCanvasWidth - paddingX);
+
+            let availableHeight = Math.min(maxCanvasHeight, viewportHeight - marginY);
+            availableHeight = Math.max(0, availableHeight - paddingY);
+
+            const measureHeightWithMargins = (selector) => {
+                const element = modalContent.querySelector(selector);
+                if (!element) {
+                    return 0;
+                }
+                const styles = window.getComputedStyle(element);
+                return element.offsetHeight +
+                    parseNumeric(styles.marginTop) +
+                    parseNumeric(styles.marginBottom);
+            };
+
+            const headerHeight = measureHeightWithMargins('.crop-header');
+            const actionsHeight = measureHeightWithMargins('.crop-actions');
+
+            let containerMargins = 0;
+            const cropContainer = modalContent.querySelector('.crop-container');
+            if (cropContainer) {
+                const containerStyles = window.getComputedStyle(cropContainer);
+                containerMargins = parseNumeric(containerStyles.marginTop) + parseNumeric(containerStyles.marginBottom);
+            }
+
+            maxCanvasHeight = Math.max(0, availableHeight - headerHeight - actionsHeight - containerMargins);
+        }
+
+        maxCanvasWidth = Math.max(1, maxCanvasWidth);
+        maxCanvasHeight = Math.max(1, maxCanvasHeight);
+
+        const scale = Math.min(
+            maxCanvasWidth / originalWidth,
+            maxCanvasHeight / originalHeight,
+            1
+        );
 
         const width = Math.round(originalWidth * scale);
         const height = Math.round(originalHeight * scale);
