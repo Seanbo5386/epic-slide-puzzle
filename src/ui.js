@@ -71,6 +71,10 @@ export class UIManager {
         this.cropSelection = document.getElementById('cropSelection');
         this.cropConfirm = document.getElementById('cropConfirm');
         this.cropCancel = document.getElementById('cropCancel');
+        this.cropModalContent = this.cropModal.querySelector('.crop-modal-content');
+        this.cropContainer = this.cropModal.querySelector('.crop-container');
+        this.cropHeader = this.cropModal.querySelector('.crop-header');
+        this.cropActions = this.cropModal.querySelector('.crop-actions');
     }
 
     initializeState() {
@@ -185,17 +189,11 @@ export class UIManager {
         // Crop event listeners
         this.cropConfirm.addEventListener('click', () => this.cropManager.confirmCrop());
         this.cropCancel.addEventListener('click', () => this.cropManager.cancelCrop());
-        // Mouse events for crop
-        this.cropOverlay.addEventListener('mousedown', (e) => this.cropManager.onCropMouseDown(e));
-        this.cropOverlay.addEventListener('mousemove', (e) => this.cropManager.onCropMouseMove(e));
-        this.cropOverlay.addEventListener('mouseup', () => this.cropManager.onCropMouseUp());
-        this.cropOverlay.addEventListener('mouseleave', () => this.cropManager.onCropMouseUp());
-
-        // Touch events for mobile crop
-        this.cropOverlay.addEventListener('touchstart', (e) => this.cropManager.onCropTouchStart(e));
-        this.cropOverlay.addEventListener('touchmove', (e) => this.cropManager.onCropTouchMove(e));
-        this.cropOverlay.addEventListener('touchend', () => this.cropManager.onCropTouchEnd());
-        this.cropOverlay.addEventListener('touchcancel', () => this.cropManager.onCropTouchEnd());
+        const pointerListenerOptions = { passive: false };
+        this.cropOverlay.addEventListener('pointerdown', (e) => this.cropManager.onPointerDown(e), pointerListenerOptions);
+        this.cropOverlay.addEventListener('pointermove', (e) => this.cropManager.onPointerMove(e), pointerListenerOptions);
+        this.cropOverlay.addEventListener('pointerup', (e) => this.cropManager.onPointerUp(e));
+        this.cropOverlay.addEventListener('pointercancel', (e) => this.cropManager.onPointerUp(e));
         
         // Win message button event listeners
         if (this.retryBtn) {
@@ -443,60 +441,12 @@ export class UIManager {
         this.cropManager.showCropModal();
     }
 
-    setupCropCanvas() {
-        this.cropManager.setupCropCanvas();
-    }
-
-    initializeCropSelection() {
-        this.cropManager.initializeCropSelection();
-    }
-
-    updateCropSelection() {
-        this.cropManager.updateCropSelection();
-    }
-
     confirmCrop() {
         this.cropManager.confirmCrop();
     }
 
     cancelCrop() {
         this.cropManager.cancelCrop();
-    }
-
-    onCropMouseDown(e) {
-        this.cropManager.onCropMouseDown(e);
-    }
-
-    onCropMouseMove(e) {
-        this.cropManager.onCropMouseMove(e);
-    }
-
-    onCropMouseUp() {
-        this.cropManager.onCropMouseUp();
-    }
-
-    getHandleAtPosition(x, y, customTolerance = null) {
-        return this.cropManager.getHandleAtPosition(x, y, customTolerance);
-    }
-
-    isInsideCropArea(x, y) {
-        return this.cropManager.isInsideCropArea(x, y);
-    }
-
-    resizeCropSelection(deltaX, deltaY) {
-        this.cropManager.resizeCropSelection(deltaX, deltaY);
-    }
-
-    onCropTouchStart(e) {
-        this.cropManager.onCropTouchStart(e);
-    }
-
-    onCropTouchMove(e) {
-        this.cropManager.onCropTouchMove(e);
-    }
-
-    onCropTouchEnd() {
-        this.cropManager.onCropTouchEnd();
     }
 
     // Shuffle Modal System
